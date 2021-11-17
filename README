@@ -1,0 +1,323 @@
+Laboratorium 4
+==============
+Lacza FIFO
+----------
+Lektura podstawowa:  Rochkind, rozdz. 7.4  
+                     Stevens,  rozdz. 3.5
+                     Troan, Johnson "Programowanie uzytkowe w systemie Linux"
+                     rozdz. 10.2 i 10.4.1
+ 
+1. Kompilacja: wywolaj program `make'
+2. Uruchamianie:
+     - Ustalic wartosc zmiennej srodowiskowej FIFO_NAME np.
+               export FIFO_NAME=plikfifo1
+     - Na kilku sesjach uruchomic test_fifo i przetestowac wszystkie przypadki.
+     - Mozna wykorzystac full_fifo do zapelnienia kolejki fifo.
+   Nalezy pamietac, zeby na wszystkich sesjach wartosc zmiennej FIFO_NAME 
+   byla taka sama.
+
+3. Pliki:
+
+   err.c, err.h
+   	Obsluga bledow.
+
+   fifo.h
+	Wspolne definicje dla programow test_fifo.c i full_fifo.c.
+
+   test_fifo.c
+   	Program testujacy kolejke fifo - tworzenie, otwieranie,
+        pisanie i czytanie (blokujace i nieblokujace), zamykanie, usuwanie.
+        Nowe funkcje systemowe:
+        	mknod() - tworzy kolejke/plik
+        	open() - otwiera kolejke/plik
+                fcntl() - modyfikuje ustawienia dla kolejki/pliku
+                unlink() - usuwa kolejke/plik
+   full_fifo.c
+   	Program zapelniajacy kolejke fifo.
+
+4. Uwagi: 
+     Tworzenie laczy nazwanych z poziomu interpretatora polecen:
+	mknod <filename> p
+	mkfifo <filename>
+
+     Przyklad:
+	mkfifo fifofile   
+	grep ps < fifofile &
+	ps | tee fifofile >> fifofile
+	rm fifofile
+     Co uzyskamy w wyniku?  (tee - czyta ze standardowego wejscia i zapisuje
+     do plikow bedacych argumentami i na standardowe wyjscie).
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!   Mechanizm kolejek fifo moze nie dzialac poprawnie w sieciowym systemie  !!
+!!   plikow (np. NFS), a taki wlasnie system dostepny jest w laboratorium.   !!
+!!   W takiej sytuacji kolejki nalezy tworzyc w lokalnym systemie plikow.    !!
+!!   Dobre miejsce to katalog /tmp.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+
+
+Scenariusz zajêæ.
+-----------------
+
+1. Powtórka z poprzednich zajêæ.
+   -----------------------------
+
+   Tydzieñ temu zapoznali siê Pañstwo z pierwszym sposobem komunikacji
+   miêdzy procesami - przez ³±cza nienazwane. Za pomoc± funkcji pipe(...)
+   mo¿na utworzyæ takie ³±cze w dowolnym procesie. Tworzy ona dwa deskryptory:
+   jeden do czytania i jeden do pisania. Utworzone w ten sposób ³±cze
+   jest widoczne tylko w procesie, który je stworzy³ oraz w jego ewentualnych
+   potomkach. ¯aden inny proces nie widzi utworzonego w ten sposób ³±cza.
+
+2. Prawa dostêpu.
+   --------------
+
+   W systemach unixowych z ka¿dym plikiem zwi±zane s± prawa dostêpu dla
+   ró¿nych u¿ytkowników. U¿ytkownicy podzieleni s± na trzy kategorie,
+   s± to:
+   - w³a¶ciciel pliku
+   - grupa, do której nale¿y w³a¶ciciel
+   - pozostali u¿ytkownicy.
+
+   Dla ka¿dej z tych kategorii prawa dostêpu s± pamiêtane oddzielnie, wiêc
+   mog± byæ ró¿ne. Prawa, jakie mo¿na nadaæ ka¿dej kategorii to:
+   - prawo do odczytu
+   - prawo do zapisu
+   - prawo do wykonywania.
+
+   Do zmiany praw dostêpu dla plików w shellu s³u¿y komenda chmod. Aby
+   zobaczyæ jakie prawa dodtêpu do plików posiadamy nale¿y wpisaæ polecenie
+   ls -l. Wtedy wypisze siê lista plików w bie¿±cym katalogu. Zobaczymy
+   wtedy takie napisy:
+
+   -rwxr-xr--   1 michalp     michalp     6470 May  3  2001 start
+
+   Za prawa dostêpu odpowiada dziewiêæ znaczników, w powy¿szym przypadku
+   to rwxr-xr--. Pierwsze trzy to prawa w³a¶ciciela, ¶rodkowe to
+   prawa cz³onka grupy, natomiast ostatnie trzy to prawa pozosta³ych
+   u¿ytkowników. Odpowiednie literki oznaczaj± (r)read, (w)rite, e(x)ecute.
+   W programach prawa dostêpu podajemy jako trzy kolejne cyfry koduj±c
+   nastêpuj±co:
+   - r = 4
+   - w = 2
+   - x = 1.
+   
+   Tak wiêc chc±c nadaæ plikowi prawa takie, jak przyk³adowemu plikowi
+   nale¿a³oby podaæ 754.
+
+3. Kolejki fifo (³±cza nazwane).
+   -----------------------------
+
+   Kolejki fifo, podobnie jak ³±cza nienazwane, s³u¿± do komunikacji miêdzy 
+   procesami. W odró¿nieniu od ³±czy nienazwanych tym razem z jednej
+   kolejki fifo bêd± mog³y korzystaæ nie tylko procesy pochodz±ce z jednej
+   linii genealogicznej. Jest to mo¿liwe, poniewa¿ z ka¿d± nowo tworzon± kolejk±
+   fifo jest zwi±zywany plik specjalny, który znajduje siê w systemie plików
+   (to w³a¶nie dlatego nazywa siê je ³±czami nazwanymi).
+
+   Aby zobaczyæ ró¿nicê miêdzy plikami fifo, a plikami zwyk³ymi, proszê
+   wykonaæ nastêpuj±ce operacje:
+
+   - stwórz kolejkê fifo (np. mkfifo /tmp/ala) 
+     na komputerach w laboratorium umieszczaj kolejki fifo
+     w katalogu /tmp. Jest to katalog znajduj±cy siê w lokalnym systemie plików
+     Kolejki tworzone na sieciowych systemach plików (np. w katalogu domowym)
+     mog± nie dzia³aæ prawid³owo.
+   - wy¶wietl zawarto¶æ katalogu, w którym stworzy³e¶ kolejkê fifo (ls /tmp)
+
+   Otrzymamy wtedy co¶ podobnego:
+   
+   drwxr-xr-x  18 michalp     michalp     1024 May  3  2001 ..
+   -rw-r--r--   1 michalp     michalp     6470 May  3  2001 README
+   prw-r--r--   1 michalp     michalp        0 Feb 24 19:42 ala
+
+   Istotna w naszym przypadku jest pierwsza literka lub kreska, to w³a¶nie
+   ona pozwala nam zorientowaæ siê z jakim plikiem mamy doczynienia. Je¿eli
+   pierwsz± liter± jest p, to wtedy oznacza to i¿ wspomniany plik jest kolejk±
+   fifo (p jest pierwsz± liter± s³owa pipe, poniewa¿ kolejka fifo jest to
+   nazwane ³±cze). Kreska (-) oznacza zwyk³y plik.
+
+   Nale¿y pamiêtaæ, ¿e z kolejki fifo tak samo jak i z ³±cza nienazwanego
+   dane s± usuwane po ich odczytaniu. Nie mo¿emy w ¿aden sposób zapewniæ,
+   aby konkretne dane przeczyta³ konkretny proces, chyba ¿e jest on
+   jedynym procesem korzystaj±cym z kolejki fifo lub ³±cza nienazwanego.
+
+4. Operacje na kolejkach fifo.
+   ---------------------------
+
+   Operacje na kolejkach fifo dostêpne w systemie dla procesów u¿ytkownika:
+
+   - stworzenie kolejki fifo (mknod, mkfifo)
+   - otwarcie kolejki do pisania lub czytania (open)
+   - pisanie do kolejki (write)
+   - czytanie z kolejki (read)
+   - zmiana trybu (fcntl)
+   - usuniêcie kolejki (unlink)
+
+4.1. Tworzenie kolejki fifo.
+     -----------------------
+
+   Zanim bêdziemy mogli w jakikolwiek sposób korzystaæ z kolejki fifo
+   trzeba j± stworzyæ. Do tworzenia kolejki fifo s³u¿y funkcja systemowa:
+   
+        int mknod(const chat *pathname, mode_t mode, dev_t dev);
+
+   Funkcja ta jako pierwszy parametr przyjmuje nazwê tworzonego pliku.
+   Je¿eli podamy przyk³adowo napis "ala", to wtedy w katalogu, w którym
+   uruchomimy nasz program powstanie plik specjalny reprezentuj±cy nasz±
+   kolejkê. Aby kolejka pojawi³a siê poza bie¿±cm katalogiem
+   musimy podaæ pe³n± ¶cie¿kê. Przyk³adowo mo¿e to byæ "/tmp/ala".
+   Nale¿y jednak w takich wypadkach uwa¿aæ, aby nasz proces mia³
+   prawa zapisu we wskazanym katalogu.
+   
+   W drugim parametrze podajemy typ urz±dzenia, które chcemy stworzyæ oraz
+   prawa dostêpu. Jako typ urz±denia podajemy flagê S_IFIFO (pozosta³e
+   flagi to: S_IFREG, S_IFBLK, S_IFCHR). Prawa dostêpu zapisujemy jako
+   trzy kolejne cyfry ósemkowe (jak opisano to w punkie 2), np. 234. 
+   Ostatecznie umieszczamy tutaj bitowy or sk³adaj±cy siê z odpowiedniej 
+   flagi i praw dostêpu, przyk³adowo S_IFIFO | 0234. Zero poprzedzajace 
+   234 oznacza w jezyku C, ze stala jest liczba osemkowa 
+   (podobnie 0x3F oznacza w C liczbe szesnastkowa 3F). 
+   
+   Trzeci parametr przy tworzeniu kolejek fifo jest niewykorzystywany.
+   W wyniku funkcja zwróci 0, je¿eli stworzenie kolejki powiod³o siê
+   lub -1 w przeciwnym przypadku.
+   
+   Drugim sposobem na tworzenie folejek fifo jest wywo³anie funkcji:
+
+        int mkfifo(const char *pathname; mode_t mode);
+
+   Szczegó³y tej funkcji znajduj± siê w man 3 mkfifo.
+
+4.2. Otwieranie kolejki fifo.
+     ------------------------
+
+   W przypadku kolejek fifo jest trochê inaczej ni¿ przy ³±czach nienazwanych.
+   Poprzednim razem od razu tworzyli¶my i otwierali¶my dwa koñce ³±cza
+   nienazwanego (funkcja pipe(..)), a otwarte deskryptory by³y dziedziczone
+   przez procesy potomne. Tym razem korzystaæ z kolejki fifo mo¿e proces
+   niespokrewniony, który ni ma jak odzieddziczyæ otwartych deskryptorów, wiêc
+   musi je sam otworzyæ. Nale¿y nadmieniæ, ¿e nawet proces, który stworzy³
+   kolejkê te¿ musi otworzyæ j±. Do otwierania kolejki fifo jak i innych
+   plików s³u¿y funkcja systemowa:
+
+        int open(const char *pathname, int flags);
+
+   Jako pierwszy parametr podajemy nazwê pliku do otwarcia. Mo¿emy tutaj
+   podawaæ nazwy w analogicznych postaciach jak przy funkcji mknod, czyli
+   nazwê pliku lub ca³± ¶cie¿kê dostêpu. Funkcja ta s³u¿y do otwierania
+   zarówno zwyk³ych plików jak i niektórych plików specjalnych.
+   
+   Drugi parametr wyznacza, co bêdziemy mogli robiæ z otrzymanym
+   w wyniku deskryptorem. Mo¿emy bowiem otworzyæ kolejkê fifo
+   do czytania, pisania lub do czytania i pisania. Powy¿szym opcjom
+   odpowiadaj± odpowiednio flagi O_RDONLY, O_WRONLY i O_RDWR. Je¿eli
+   otwieramy kolejkê tylko do odczytu (zapisu) oraz ¿aden inny proces
+   jeszcze nie otwiera³ kolejki, to operacja taka spowoduje zablokowanie
+   naszego procesu na instrukcji open. Proces bêdzie czeka³ dopóki inny
+   proces nie podejmie próby otwarcia kolejki odpowiednio do pisania 
+   (czytania). Je¿eli proces otwiera kolejkê do czytania i pisania, to 
+   nie jest wstrzymywany. Reasumuj±c, otwarcie kolejki fifo zostanie 
+   zakoñczone dopiero wtedy, gdy zostanie podjêta próba otwarcia obu
+   koñców kolejki (do pisania i czytania).
+   Aby proces nie by³ wstrzymywany na próbie otwarcia kolejki mo¿emy
+   u¿yæ flagi O_NONBLOCK lub O_NDELAY. Nale¿y jednak pamiêtaæ, ¿e wtedy
+   próba otwarcia zakoñczy siê b³edem.
+
+   W wyniku otwarcia kolejki funkcj± open uzyskujemy numer dskryptora lub
+   -1 je¿eli otwarcie siê niepowiod³o (numery deskryptorów zaczynaj± siê od
+   zera i rosn±).
+
+4.3. Zapis i odczyt z kolejki fifo.
+     ------------------------------
+
+   Kiedy mamy ju¿  otwarty deskryptor, to mo¿emy ju¿ normalnie czytaæ
+   i pisaæ do kolejki fifo tak jak do ³±cza nienazwanego. Jedyn± ró¿nic±
+   jest to, i¿ mo¿emy mieæ deskryptor zarówno do odczytu jak i zapisu. Do
+   czytania lub pisania s³u¿± nastêpuj±ce funkcje systemowe:
+
+        ssize_t read(int fd, void *buf, size_t count);
+        ssize_t write(int fd, const void *buf, size_t count);
+
+   Powy¿sze funkcje by³y szczegó³owo omówione na poprzednich zajêciach.
+
+4.4. Zmiana trybu.
+     -------------
+
+   Je¿eli chcemy zmieniaæ tryb i prawa dostêpu do kolejki fifo, to
+   wcale nie musimy tworzyæ kolejki od pocz±tku. Wystarczy tylko
+   u¿yæ odpowiednich funkcji systemowch:
+
+        int fcntl(int fd, int cmd);
+	int fcntl(int fd, int cmd, long arg);
+
+   Funkcje te dzia³aj± ró¿nie, w zale¿no¶ci od podanej warto¶ci komendy.
+   W ogólno¶ci pierwszej z powy¿szych funkcji u¿ywamy, aby poznaæ
+   bie¿±ce ustawienia. Druga z podanych funkcji s³u¿y do zmiany
+   bie¿±cych ustawieñ na nowe, podawane jako trzeci parametr.
+   
+   Jako pierwszy parametr podajemy deskryptor kolejki, na której
+   bêdziemy chcieli dokonaæ odczytu ustawieñ lub ich modyfikacji.
+   
+   Drugi parametr mo¿e przyj±æ nastêpuj±ce warto¶ci:
+   - F_GETFL
+   - F_SETFL
+   - F_GETOWN
+   - F_SETOWN
+   - F_GETFD
+   - F_SETFD
+   - F_DUPFD
+   - inne i
+
+   Pierwsze dwie komendy s³u¿± do pobrania bie¿acego ustawienia flag lub
+   ich zmiany. Zmienione zostaæ mog± tylko ustawienia flag:
+   - O_APPEND
+   - O_NONBLOCK
+   - O_ASYNC.
+   
+   Druga para zwi±zana jest z pobraniem lub ustawieniem procesu (grupy
+   procesów), który korzysta z konkretnej kolejki.
+   
+   Trzecia para pozwala dowiedzieæ siê i ewentualnie zmieniæ zachowanie siê
+   deskryptora podczas wykonania jakiejkolwiek a funkcji exec. Mo¿na
+   ustawiæ flagê FD_CLOEXEC, która mówi czy deskryptor ma byæ automatycznie
+   zamykany po wykonaniu exec-a.
+   
+   Ostatnia flaga s³u¿y do kopiowania deskryptora. Przydzielony zostanie
+   pierwszy wolny deskryptor o warto¶ci wiêkszej równej parametrowi arg.
+   
+4.5. Usuniêcie kolejki fifo.
+     -----------------------
+
+   Po zakoñczeniu pracy nale¿y zawsze posprz±taæ po sobie, czyli pozamykaæ
+   wszystkie deskryptory i usun±æ wszystkie pliki jaki stworzyli¶my.
+   W przypadku, kiedy tworzymy kolejkê fifo w hierarchii plików jeste¶my
+   zobowi±zani usun±æ j±. Do usuwania plików s³u¿y funkcja systemowa:
+
+        int unlink(const char *pathname);
+
+   Je¿eli nikt nie ma otwartego deskryptora na wskazany plik, to wtedy
+   jest on usuwany. Je¿eli kto¶ ci±gle korzysta ze wskazanego pliku,
+   to wtedy jest on zaznaczany do usuniêcia.
+
+   W przypadku sukcesu funkcja zwróci 0, w przeciwnym przypadku -1.
+
+
+ZADANIE 4
+---------
+  
+   ------------------------------------------------------------------
+  |                                                                  |
+  |  Zmieñ rozwi±zanie zadania 3 z poprzedniego tygodnia tak, aby    |
+  |  komunikacja odbywa³a siê za pomoc± kolejek fifo.                |
+  |                                                                  |
+   ------------------------------------------------------------------
+
+
+
+
+   
+
+
+
